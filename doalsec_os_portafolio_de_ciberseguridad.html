@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DoalSec OS | Doal Sánchez - Ciberseguridad Defensiva</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: JetBrains Mono & Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        cyber: {
+                            bg: '#090d16',
+                            panel: 'rgba(15, 23, 42, 0.85)',
+                            border: 'rgba(56, 189, 248, 0.25)',
+                            accent: '#eab308', // Amarillo inspirado en el CV original
+                            cyan: '#06b6d4',
+                            green: '#10b981',
+                            red: '#ef4444'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Estilos personalizados para simular el entorno de Sistema Operativo */
+        body {
+            overflow: hidden;
+            user-select: none;
+            background-color: #060911;
+            background-image: 
+                radial-gradient(circle at 50% 50%, rgba(6, 182, 212, 0.1) 0%, transparent 60%),
+                linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+            background-size: 100% 100%, 32px 32px, 32px 32px;
+        }
+
+        /* Efecto Scanline sutil */
+        .scanlines::after {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.18) 50%);
+            z-index: 999;
+            background-size: 100% 4px;
+            pointer-events: none;
+        }
+
+        /* Scrollbars estilo Cyber */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(6, 182, 212, 0.4);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(234, 179, 8, 0.8);
+        }
+
+        /* Ventanas del SO */
+        .os-window {
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            transition: transform 0.15s ease, opacity 0.15s ease, width 0.2s ease, height 0.2s ease;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(6, 182, 212, 0.25);
+        }
+
+        .os-window.active-window {
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(234, 179, 8, 0.6), 0 0 20px rgba(234, 179, 8, 0.15);
+        }
+
+        /* En móvil las ventanas ocupan el área disponible de forma limpia */
+        @media (max-width: 767px) {
+            .os-window {
+                top: 36px !important;
+                left: 0 !important;
+                width: 100vw !important;
+                height: calc(100dvh - 104px) !important;
+                border-radius: 0 !important;
+            }
+        }
+
+        .window-minimized {
+            transform: scale(0.85) translateY(60px);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* Animación de pulso para indicadores */
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 1; box-shadow: 0 0 8px #10b981; }
+            50% { opacity: 0.4; box-shadow: 0 0 2px #10b981; }
+        }
+        .status-dot {
+            animation: pulse-glow 2s infinite;
+        }
+    </style>
+</head>
+<body class="text-slate-200 font-sans h-[100dvh] w-screen relative scanlines select-none flex flex-col justify-between">
+
+    <!-- ==================== PANTALLA DE ARRANQUE (BOOTLOADER) ==================== -->
+    <div id="boot-screen" class="fixed inset-0 bg-[#05070c] z-[2000] flex flex-col justify-between p-6 md:p-12 font-mono text-xs md:text-sm transition-opacity duration-500">
+        <div class="max-w-3xl w-full mx-auto space-y-2">
+            <div class="flex items-center space-x-3 text-cyber-accent mb-6">
+                <i class="fa-solid fa-shield-halved text-2xl md:text-3xl"></i>
+                <div>
+                    <h1 class="text-lg md:text-xl font-bold tracking-wider">DOALSEC_OS v2.6 // DEFENSIVE EDITION</h1>
+                    <p class="text-[11px] text-slate-400">Kernel Security Module - Doal Sánchez Portfolio</p>
+                </div>
+            </div>
+            <div id="boot-logs" class="space-y-1.5 text-slate-300 overflow-hidden"></div>
+        </div>
+
+        <div class="max-w-3xl w-full mx-auto">
+            <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden border border-slate-700">
+                <div id="boot-progress" class="bg-gradient-to-r from-cyber-cyan to-cyber-accent h-full w-0 transition-all duration-200"></div>
+            </div>
+            <div class="flex justify-between items-center mt-2 text-[11px] text-slate-400">
+                <span id="boot-status">Inicializando módulos de defensa...</span>
+                <button onclick="skipBoot()" class="text-cyber-accent hover:underline px-2 py-1 rounded bg-slate-900 border border-slate-700">Saltar [ESC]</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== BARRA SUPERIOR (TOP BAR / SOC STATUS) ==================== -->
+    <header class="h-9 bg-slate-950/90 backdrop-blur-md border-b border-slate-800/80 px-3 md:px-5 flex items-center justify-between z-50 text-xs font-mono shrink-0">
+        <!-- Izquierda: Marca y Estado -->
+        <div class="flex items-center space-x-3">
+            <button onclick="toggleStartMenu()" class="flex items-center space-x-2 text-cyber-accent font-bold hover:bg-slate-800/70 px-2 py-1 rounded transition">
+                <i class="fa-solid fa-shield-cat"></i>
+                <span>DoalSec</span>
+            </button>
+            <span class="hidden sm:inline-block text-slate-600">|</span>
+            <div class="hidden sm:flex items-center space-x-2 text-[11px] text-emerald-400 bg-emerald-950/50 border border-emerald-700/40 px-2 py-0.5 rounded-full">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 status-dot"></span>
+                <span>DEFCON 5: SISTEMA SEGURO</span>
+            </div>
+        </div>
+
+        <!-- Centro: Usuario activo -->
+        <div class="hidden md:flex items-center space-x-2 text-slate-400">
+            <i class="fa-solid fa-user-shield text-cyber-cyan"></i>
+            <span>root@doal-sanchez:~</span>
+        </div>
+
+        <!-- Derecha: Indicadores de Sistema y Reloj -->
+        <div class="flex items-center space-x-3 text-slate-300">
+            <div class="hidden sm:flex items-center space-x-1.5 text-[11px]" title="Firewall Activo">
+                <i class="fa-solid fa-fire-flame-curved text-cyber-accent"></i>
+                <span>IDS: ON</span>
+            </div>
+            <button onclick="openWindow('win-contact')" class="hover:text-cyber-accent transition" title="Contacto Rápido">
+                <i class="fa-solid fa-envelope"></i>
+            </button>
+            <span id="os-clock" class="text-cyber-cyan font-semibold">00:00:00</span>
+        </div>
+    </header>
+
+    <!-- ==================== ESCRITORIO PRINCIPAL ==================== -->
+    <main id="desktop-area" class="flex-1 relative overflow-hidden p-4 md:p-6">
+        
+        <!-- Widget Flotante de Fondo (Solo Escritorio) -->
+        <div class="hidden lg:block absolute top-6 right-6 w-72 bg-slate-900/60 backdrop-blur-md border border-slate-800 rounded-xl p-4 font-mono text-xs pointer-events-none select-none z-0">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-2 mb-3">
+                <span class="text-cyber-accent font-bold"><i class="fa-solid fa-radar mr-1.5"></i>SOC TELEMETRY</span>
+                <span class="text-[10px] text-emerald-400">ONLINE</span>
+            </div>
+            <div class="space-y-2.5 text-[11px]">
+                <div>
+                    <div class="flex justify-between text-slate-400 mb-1">
+                        <span>Integridad de Red</span>
+                        <span class="text-emerald-400">99.8%</span>
+                    </div>
+                    <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                        <div class="bg-emerald-500 h-full w-[99%]"></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="flex justify-between text-slate-400 mb-1">
+                        <span>Auditoría Preventiva</span>
+                        <span class="text-cyber-cyan">ACTIVA</span>
+                    </div>
+                    <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                        <div class="bg-cyber-cyan h-full w-4/5"></div>
+                    </div>
+                </div>
+                <div class="pt-2 border-t border-slate-800/80 text-slate-400 space-y-1">
+                    <div><span class="text-slate-500">Operador:</span> Doal Sánchez</div>
+                    <div><span class="text-slate-500">Rol:</span> Ciberseguridad Defensiva</div>
+                    <div><span class="text-slate-500">Disponibilidad:</span> <span class="text-cyber-accent">Total (100%)</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ICONOS DEL ESCRITORIO -->
+        <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-1 gap-3 md:gap-4 w-full md:w-28 z-10 relative">
+            
+            <button onclick="openWindow('win-profile')" class="group flex flex-col items-center p-2.5 rounded-xl hover:bg-slate-800/50 active:scale-95 transition text-center">
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400 to-yellow-600 flex items-center justify-center text-slate-950 shadow-lg shadow-amber-500/20 group-hover:scale-105 transition">
+                    <i class="fa-solid fa-id-badge text-2xl"></i>
+                </div>
+                <span class="mt-1.5 text-xs font-medium text-slate-200 drop-shadow">Sobre Mí</span>
+            </button>
+
+            <button onclick="openWindow('win-experience')" class="group flex flex-col items-center p-2.5 rounded-xl hover:bg-slate-800/50 active:scale-95 transition text-center">
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center text-slate-950 shadow-lg shadow-cyan-500/20 group-hover:scale-105 transition">
+                    <i class="fa-solid fa-briefcase text-2xl"></i>
+                </div>
+                <span class="mt-1.5 text-xs font-medium text-slate-200 drop-shadow">Experiencia</span>
+            </button>
+
+            <button onclick="openWindow('win-skills')" class="group flex flex-col items-center p-2.5 rounded-xl hover:bg-slate-800/50 active:scale-95 transition text-center">
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-slate-950 shadow-lg shadow-emerald-500/20 group-hover:scale-105 transition">
+                    <i class="fa-solid fa-microchip text-2xl"></i>
+                </div>
+                <span class="mt-1.5 text-xs font-medium text-slate-200 drop-shadow">Habilidades</span>
+            </button>
+
+            <button onclick="openWindow('win-education')" class="group flex flex-col items-center p-2.5 rounded-xl hover:bg-slate-800/50 active:scale-95 transition text-center">
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-400 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-purple-500/20 group-hover:scale-105 transition">
+                    <i class="fa-solid fa-graduation-cap text-2xl"></i>
+                </div>
+                <span class="mt-1.5 text-xs font-medium text-slate-200 drop-shadow">Educación</span>
+            </button>
+
+            <button onclick="openWindow('win-terminal')" class="group flex flex-col items-center p-2.5 rounded-xl hover:bg-slate-800/50 active:scale-95 transition text-center">
+                <div class="w-12 h-12 rounded-xl bg-slate-900 border border-cyber-cyan/60 flex items-center justify-center text-cyber-cyan shadow-lg shadow-cyan-500/10 group-hover:scale-105 transition">
+                    <i class="fa-solid fa-terminal text-xl"></i>
+                </div>
+                <span class="mt-1.5 text-xs font-medium text-slate-200 drop-shadow">Terminal</span>
+            </button>
+
+            <button onclick="openWindow('win-contact')" class="group flex flex-col items-center p-2.5 rounded-xl hover:bg-slate-800/50 active:scale-95 transition text-center">
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-rose-500 to-orange-500 flex items-center justify-center text-white shadow-lg shadow-rose-500/20 group-hover:scale-105 transition">
+                    <i class="fa-solid fa-qrcode text-2xl"></i>
+                </div>
+                <span class="mt-1.5 text-xs font-medium text-slate-200 drop-shadow">Contacto / QR</span>
+            </button>
+        </div>
+
+        <!-- ==================== VENTANAS DEL SISTEMA OPERATIVO ==================== -->
+
+        <!-- 1. VENTANA: PERFIL / SOBRE MÍ -->
+        <section id="win-profile" class="os-window absolute top-6 left-6 md:left-40 w-[680px] h-[480px] bg-cyber-panel rounded-xl flex flex-col overflow-hidden z-30">
+            <!-- Barra de título -->
+            <div class="win-header h-10 bg-slate-900/95 border-b border-slate-800 px-3 flex items-center justify-between cursor-move shrink-0">
+                <div class="flex items-center space-x-2 text-xs font-mono">
+                    <i class="fa-solid fa-id-badge text-cyber-accent"></i>
+                    <span class="font-semibold text-slate-200">expediente_doal_sanchez.exe</span>
+                </div>
+                <div class="flex items-center space-x-1.5">
+                    <button onclick="minimizeWindow('win-profile')" class="w-6 h-6 rounded hover:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white"><i class="fa-solid fa-minus text-[10px]"></i></button>
+                    <button onclick="closeWindow('win-profile')" class="w-6 h-6 rounded hover:bg-rose-600 flex items-center justify-center text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-xs"></i></button>
+                </div>
+            </div>
+
+            <!-- Contenido -->
+            <div class="p-5 md:p-6 overflow-y-auto flex-1 space-y-6 select-text">
+                <!-- Cabecera de Perfil inspirada en el CV amarillo/negro -->
+                <div class="flex flex-col sm:flex-row items-center sm:items-start gap-5 bg-slate-900/90 border border-slate-800 p-4 rounded-xl relative overflow-hidden">
+                    <div class="absolute top-0 left-0 w-2 h-full bg-cyber-accent"></div>
+                    
+                    <!-- Avatar Ilustrado SVG + Badge -->
+                    <div class="relative shrink-0">
+                        <div class="w-24 h-24 rounded-full bg-gradient-to-tr from-cyber-accent to-cyan-400 p-1 shadow-lg">
+                            <div class="w-full h-full rounded-full bg-slate-950 flex flex-col items-center justify-center relative overflow-hidden">
+                                <i class="fa-solid fa-user-secret text-4xl text-cyber-accent"></i>
+                                <span class="text-[9px] font-mono text-cyan-400 mt-1">BLUE TEAM</span>
+                            </div>
+                        </div>
+                        <span class="absolute bottom-1 right-1 w-4 h-4 bg-emerald-500 border-2 border-slate-950 rounded-full" title="Disponible"></span>
+                    </div>
+
+                    <div class="text-center sm:text-left flex-1">
+                        <div class="inline-block px-2.5 py-0.5 rounded bg-cyber-accent/20 border border-cyber-accent/50 text-cyber-accent font-mono text-[11px] mb-1">
+                            ID: SEC-DEF-2026
+                        </div>
+                        <h2 class="text-2xl md:text-3xl font-bold text-white tracking-tight">Doal Sánchez</h2>
+                        <p class="text-cyber-cyan font-mono text-sm md:text-base font-medium mt-0.5">Especialista en Ciberseguridad Defensiva</p>
+                        
+                        <div class="flex flex-wrap justify-center sm:justify-start gap-2 mt-3 text-xs text-slate-300">
+                            <span class="bg-slate-800/90 px-2.5 py-1 rounded-md border border-slate-700 flex items-center gap-1.5">
+                                <i class="fa-solid fa-envelope text-cyber-accent"></i> Higerman299@gmail.com
+                            </span>
+                            <span class="bg-emerald-950/70 text-emerald-300 px-2.5 py-1 rounded-md border border-emerald-700/50 flex items-center gap-1.5">
+                                <i class="fa-solid fa-circle-check"></i> Disponibilidad Total
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sobre Mí -->
+                <div class="bg-slate-900/60 border border-slate-800/90 rounded-xl p-4">
+                    <h3 class="text-xs font-mono uppercase tracking-wider text-cyber-accent mb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-terminal"></i> Sobre Mí // Perfil Profesional
+                    </h3>
+                    <p class="text-sm text-slate-300 leading-relaxed">
+                        Me interesa la tecnología, la programación y la <strong class="text-white">ciberseguridad</strong>. Me gusta desarrollar soluciones digitales, resolver problemas y aprender de forma autónoma. Busco fortalecer mis habilidades tecnológicas y prepararme profesionalmente en la <strong class="text-cyber-cyan">protección de sistemas y datos</strong>.
+                    </p>
+                </div>
+
+                <!-- Más Información & Idiomas -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="bg-slate-900/60 border border-slate-800/90 rounded-xl p-4">
+                        <h3 class="text-xs font-mono uppercase tracking-wider text-cyber-cyan mb-3 flex items-center gap-2">
+                            <i class="fa-solid fa-circle-info"></i> Más Información
+                        </h3>
+                        <ul class="space-y-2 text-sm text-slate-300">
+                            <li class="flex items-center gap-2.5">
+                                <i class="fa-solid fa-check text-emerald-400 text-xs"></i>
+                                <span>Estudiante de educación media / tecnológica.</span>
+                            </li>
+                            <li class="flex items-center gap-2.5">
+                                <i class="fa-solid fa-clock text-cyber-accent text-xs"></i>
+                                <span>Disponibilidad total inmediata.</span>
+                            </li>
+                            <li class="flex items-center gap-2.5">
+                                <i class="fa-solid fa-shield-halved text-cyber-cyan text-xs"></i>
+                                <span>Enfoque en Blue Team, Soporte y Auditoría.</span>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="bg-slate-900/60 border border-slate-800/90 rounded-xl p-4">
+                        <h3 class="text-xs font-mono uppercase tracking-wider text-cyber-cyan mb-3 flex items-center gap-2">
+                            <i class="fa-solid fa-language"></i> Idiomas
+                        </h3>
+                        <div class="space-y-3 text-sm">
+                            <div>
+                                <div class="flex justify-between mb-1">
+                                    <span class="font-medium text-white">Español</span>
+                                    <span class="text-xs font-mono text-emerald-400">Nativo (100%)</span>
+                                </div>
+                                <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                                    <div class="bg-emerald-500 h-full w-full"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between mb-1">
+                                    <span class="font-medium text-white">Inglés</span>
+                                    <span class="text-xs font-mono text-cyber-accent">Nivel Medio / A2</span>
+                                </div>
+                                <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                                    <div class="bg-cyber-accent h-full w-[60%]"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. VENTANA: EXPERIENCIA LABORAL (SYSTEM LOGS) -->
+        <section id="win-experience" class="os-window window-minimized absolute top-12 left-16 md:left-52 w-[700px] h-[490px] bg-cyber-panel rounded-xl flex flex-col overflow-hidden z-20">
+            <div class="win-header h-10 bg-slate-900/95 border-b border-slate-800 px-3 flex items-center justify-between cursor-move shrink-0">
+                <div class="flex items-center space-x-2 text-xs font-mono">
+                    <i class="fa-solid fa-briefcase text-cyber-cyan"></i>
+                    <span class="font-semibold text-slate-200">/var/log/experiencia_laboral.log</span>
+                </div>
+                <div class="flex items-center space-x-1.5">
+                    <button onclick="minimizeWindow('win-experience')" class="w-6 h-6 rounded hover:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white"><i class="fa-solid fa-minus text-[10px]"></i></button>
+                    <button onclick="closeWindow('win-experience')" class="w-6 h-6 rounded hover:bg-rose-600 flex items-center justify-center text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-xs"></i></button>
+                </div>
+            </div>
+
+            <div class="p-5 md:p-6 overflow-y-auto flex-1 select-text">
+                <div class="flex items-center justify-between mb-6">
+                    <div>
+                        <h2 class="text-lg font-bold text-white">Historial Operativo & Experiencia</h2>
+                        <p class="text-xs text-slate-400 font-mono">Registro cronológico en infraestructura, soporte y seguridad preventiva</p>
+                    </div>
+                    <span class="px-2.5 py-1 rounded bg-emerald-950 text-emerald-400 border border-emerald-700/50 text-xs font-mono">3 REGISTROS VERIFICADOS</span>
+                </div>
+
+                <!-- Línea de tiempo -->
+                <div class="relative border-l-2 border-cyber-cyan/40 ml-3 space-y-6 pb-2">
+                    
+                    <!-- Trabajo 1: Actual -->
+                    <div class="relative pl-6">
+                        <span class="absolute -left-[9px] top-1.5 w-4 h-4 rounded-full bg-cyber-accent border-4 border-slate-950 shadow"></span>
+                        <div class="bg-slate-900/80 border border-cyber-accent/40 rounded-xl p-4 shadow-md">
+                            <div class="flex flex-wrap items-center justify-between gap-2 mb-1">
+                                <h3 class="font-bold text-white text-base">Mantenimiento de Sistemas Informáticos</h3>
+                                <span class="text-[11px] font-mono bg-cyber-accent/20 text-cyber-accent border border-cyber-accent/40 px-2 py-0.5 rounded">
+                                    Enero 2025 - Actualmente
+                                </span>
+                            </div>
+                            <div class="text-xs font-mono text-cyber-cyan mb-3 flex items-center gap-1.5">
+                                <i class="fa-solid fa-building-shield"></i> Amsecar, S.A.S
+                            </div>
+                            <p class="text-sm text-slate-300 leading-relaxed">
+                                • Detección preventiva de vulnerabilidades, auditoría operativa y aseguramiento de la continuidad operativa de los sistemas.
+                            </p>
+                            <div class="flex flex-wrap gap-1.5 mt-3">
+                                <span class="text-[10px] font-mono bg-slate-800 text-slate-300 px-2 py-0.5 rounded">Detección de Vulnerabilidades</span>
+                                <span class="text-[10px] font-mono bg-slate-800 text-slate-300 px-2 py-0.5 rounded">Auditoría Operativa</span>
+                                <span class="text-[10px] font-mono bg-slate-800 text-slate-300 px-2 py-0.5 rounded">Continuidad del Negocio</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Trabajo 2 -->
+                    <div class="relative pl-6">
+                        <span class="absolute -left-[9px] top-1.5 w-4 h-4 rounded-full bg-cyber-cyan border-4 border-slate-950"></span>
+                        <div class="bg-slate-900/70 border border-slate-800 rounded-xl p-4">
+                            <div class="flex flex-wrap items-center justify-between gap-2 mb-1">
+                                <h3 class="font-bold text-white text-base">Analista de Infraestructura y Soporte Técnico</h3>
+                                <span class="text-[11px] font-mono bg-slate-800 text-slate-300 px-2 py-0.5 rounded">
+                                    Octubre 2023 - Enero 2025
+                                </span>
+                            </div>
+                            <div class="text-xs font-mono text-cyber-cyan mb-3 flex items-center gap-1.5">
+                                <i class="fa-solid fa-server"></i> Disflenal S.A.S
+                            </div>
+                            <p class="text-sm text-slate-300 leading-relaxed">
+                                • Implementación de rutinas de optimización de rendimiento, copias de seguridad (backups) y resolución de incidencias en software empresarial.
+                            </p>
+                            <div class="flex flex-wrap gap-1.5 mt-3">
+                                <span class="text-[10px] font-mono bg-slate-800 text-slate-300 px-2 py-0.5 rounded">Backups & Recovery</span>
+                                <span class="text-[10px] font-mono bg-slate-800 text-slate-300 px-2 py-0.5 rounded">Infraestructura TI</span>
+                                <span class="text-[10px] font-mono bg-slate-800 text-slate-300 px-2 py-0.5 rounded">Respuesta a Incidencias</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Trabajo 3 -->
+                    <div class="relative pl-6">
+                        <span class="absolute -left-[9px] top-1.5 w-4 h-4 rounded-full bg-slate-500 border-4 border-slate-950"></span>
+                        <div class="bg-slate-900/70 border border-slate-800 rounded-xl p-4">
+                            <div class="flex flex-wrap items-center justify-between gap-2 mb-1">
+                                <h3 class="font-bold text-white text-base">Mantenimiento de Sistemas Informáticos</h3>
+                                <span class="text-[11px] font-mono bg-slate-800 text-slate-300 px-2 py-0.5 rounded">
+                                    Febrero 2023 - Junio 2024
+                                </span>
+                            </div>
+                            <div class="text-xs font-mono text-cyber-cyan mb-3 flex items-center gap-1.5">
+                                <i class="fa-solid fa-school"></i> Colegio Antares
+                            </div>
+                            <p class="text-sm text-slate-300 leading-relaxed">
+                                • Atención directa a usuarios (docentes y administrativos), optimizando los tiempos de respuesta ante fallas técnicas.
+                            </p>
+                            <div class="flex flex-wrap gap-1.5 mt-3">
+                                <span class="text-[10px] font-mono bg-slate-800 text-slate-300 px-2 py-0.5 rounded">Soporte N1/N2</span>
+                                <span class="text-[10px] font-mono bg-slate-800 text-slate-300 px-2 py-0.5 rounded">Optimización de Tiempos</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. VENTANA: HABILIDADES & LABORATORIO GHIDRA / IDA PRO -->
+        <section id="win-skills" class="os-window window-minimized absolute top-16 left-24 md:left-64 w-[720px] h-[500px] bg-cyber-panel rounded-xl flex flex-col overflow-hidden z-20">
+            <div class="win-header h-10 bg-slate-900/95 border-b border-slate-800 px-3 flex items-center justify-between cursor-move shrink-0">
+                <div class="flex items-center space-x-2 text-xs font-mono">
+                    <i class="fa-solid fa-microchip text-emerald-400"></i>
+                    <span class="font-semibold text-slate-200">arsenal_tecnico_y_reversing.bin</span>
+                </div>
+                <div class="flex items-center space-x-1.5">
+                    <button onclick="minimizeWindow('win-skills')" class="w-6 h-6 rounded hover:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white"><i class="fa-solid fa-minus text-[10px]"></i></button>
+                    <button onclick="closeWindow('win-skills')" class="w-6 h-6 rounded hover:bg-rose-600 flex items-center justify-center text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-xs"></i></button>
+                </div>
+            </div>
+
+            <div class="p-5 md:p-6 overflow-y-auto flex-1 space-y-6 select-text">
+                <div>
+                    <h2 class="text-lg font-bold text-white">Habilidades Técnicas y Operativas</h2>
+                    <p class="text-xs text-slate-400 font-mono">Capacidades de ingeniería inversa, análisis y gestión de equipos</p>
+                </div>
+
+                <!-- Grid de Habilidades del CV -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    
+                    <div class="bg-slate-900/80 border border-slate-800 p-3.5 rounded-xl flex items-start space-x-3">
+                        <div class="w-10 h-10 rounded-lg bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400 shrink-0">
+                            <i class="fa-solid fa-bug-slash text-lg"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="flex justify-between items-center">
+                                <h3 class="font-bold text-white text-sm">Ghidra (NSA SRE)</h3>
+                                <span class="text-[10px] font-mono text-rose-400">REVERSING</span>
+                            </div>
+                            <p class="text-xs text-slate-400 mt-1">Análisis estático de binarios, decompilación e inspección de malware.</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-900/80 border border-slate-800 p-3.5 rounded-xl flex items-start space-x-3">
+                        <div class="w-10 h-10 rounded-lg bg-cyber-cyan/10 border border-cyber-cyan/30 flex items-center justify-center text-cyber-cyan shrink-0">
+                            <i class="fa-solid fa-compass-drafting text-lg"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="flex justify-between items-center">
+                                <h3 class="font-bold text-white text-sm">IDA PRO</h3>
+                                <span class="text-[10px] font-mono text-cyber-cyan">DISASSEMBLER</span>
+                            </div>
+                            <p class="text-xs text-slate-400 mt-1">Desensamblaje interactivo, trazado de flujo de control y auditoría a bajo nivel.</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-900/80 border border-slate-800 p-3.5 rounded-xl flex items-start space-x-3">
+                        <div class="w-10 h-10 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+                            <i class="fa-solid fa-code text-lg"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="flex justify-between items-center">
+                                <h3 class="font-bold text-white text-sm">Lógica de Programación</h3>
+                                <span class="text-[10px] font-mono text-amber-400">DEV / SEC</span>
+                            </div>
+                            <p class="text-xs text-slate-400 mt-1">Diseño de algoritmos, automatización de tareas y desarrollo de soluciones digitales.</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-900/80 border border-slate-800 p-3.5 rounded-xl flex items-start space-x-3">
+                        <div class="w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+                            <i class="fa-solid fa-puzzle-piece text-lg"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="flex justify-between items-center">
+                                <h3 class="font-bold text-white text-sm">Resolución de Problemas</h3>
+                                <span class="text-[10px] font-mono text-emerald-400">TROUBLESHOOTING</span>
+                            </div>
+                            <p class="text-xs text-slate-400 mt-1">Diagnóstico rápido de incidentes críticos y mitigación de fallos operativos.</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-900/80 border border-slate-800 p-3.5 rounded-xl flex items-start space-x-3">
+                        <div class="w-10 h-10 rounded-lg bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400 shrink-0">
+                            <i class="fa-solid fa-users-gear text-lg"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="flex justify-between items-center">
+                                <h3 class="font-bold text-white text-sm">Gestión de Grandes Equipos</h3>
+                                <span class="text-[10px] font-mono text-purple-400">LIDERAZGO</span>
+                            </div>
+                            <p class="text-xs text-slate-400 mt-1">Coordinación efectiva, soporte a usuarios masivos y comunicación asertiva.</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-900/80 border border-slate-800 p-3.5 rounded-xl flex items-start space-x-3">
+                        <div class="w-10 h-10 rounded-lg bg-green-500/10 border border-green-500/30 flex items-center justify-center text-green-400 shrink-0">
+                            <i class="fa-solid fa-file-excel text-lg"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="flex justify-between items-center">
+                                <h3 class="font-bold text-white text-sm">Microsoft Excel</h3>
+                                <span class="text-[10px] font-mono text-green-400">DATA & REPORTES</span>
+                            </div>
+                            <p class="text-xs text-slate-400 mt-1">Control de inventarios TI, análisis de datos de auditoría y reportes de gestión.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Simulador Interactivo de Ingeniería Inversa (Ghidra / IDA View) -->
+                <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 font-mono text-xs">
+                    <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2 mb-3">
+                        <span class="text-cyber-accent font-bold flex items-center gap-2">
+                            <i class="fa-solid fa-magnifying-glass-chart"></i> VISOR DE DESENSAMBLAJE (IDA PRO / GHIDRA SIM)
+                        </span>
+                        <button onclick="analyzeBinary()" class="px-2.5 py-1 bg-cyber-cyan/20 hover:bg-cyber-cyan/30 text-cyber-cyan border border-cyber-cyan/40 rounded text-[11px] transition">
+                            <i class="fa-solid fa-play mr-1"></i> Auditar Función
+                        </button>
+                    </div>
+                    <div id="asm-viewer" class="space-y-1 text-[11px] text-slate-400 overflow-x-auto">
+                        <div><span class="text-slate-600">0x00401000</span>  <span class="text-purple-400">push</span>    ebp</div>
+                        <div><span class="text-slate-600">0x00401001</span>  <span class="text-purple-400">mov</span>     ebp, esp</div>
+                        <div><span class="text-slate-600">0x00401003</span>  <span class="text-cyber-cyan">call</span>    <span class="text-amber-300">doal_verify_system_integrity</span></div>
+                        <div><span class="text-slate-600">0x00401008</span>  <span class="text-purple-400">test</span>    eax, eax</div>
+                        <div><span class="text-slate-600">0x0040100A</span>  <span class="text-emerald-400">jz</span>      short loc_secure_mode <span class="text-slate-500">; Protección activa</span></div>
+                    </div>
+                    <div id="asm-result" class="mt-2 pt-2 border-t border-slate-900 text-emerald-400 hidden">
+                        [✓] Análisis completado: Binario verificado sin payloads maliciosos. Integridad asegurada.
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. VENTANA: DATOS ACADÉMICOS -->
+        <section id="win-education" class="os-window window-minimized absolute top-14 left-12 md:left-48 w-[620px] h-[440px] bg-cyber-panel rounded-xl flex flex-col overflow-hidden z-20">
+            <div class="win-header h-10 bg-slate-900/95 border-b border-slate-800 px-3 flex items-center justify-between cursor-move shrink-0">
+                <div class="flex items-center space-x-2 text-xs font-mono">
+                    <i class="fa-solid fa-graduation-cap text-purple-400"></i>
+                    <span class="font-semibold text-slate-200">datos_academicos.db</span>
+                </div>
+                <div class="flex items-center space-x-1.5">
+                    <button onclick="minimizeWindow('win-education')" class="w-6 h-6 rounded hover:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white"><i class="fa-solid fa-minus text-[10px]"></i></button>
+                    <button onclick="closeWindow('win-education')" class="w-6 h-6 rounded hover:bg-rose-600 flex items-center justify-center text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-xs"></i></button>
+                </div>
+            </div>
+
+            <div class="p-5 md:p-6 overflow-y-auto flex-1 space-y-4 select-text">
+                <div>
+                    <h2 class="text-lg font-bold text-white">Formación Académica</h2>
+                    <p class="text-xs text-slate-400 font-mono">Estudios tecnológicos, idiomas y educación media</p>
+                </div>
+
+                <div class="space-y-3.5">
+                    <!-- SENA -->
+                    <div class="bg-slate-900/80 border border-slate-800 hover:border-cyber-accent/50 transition rounded-xl p-4 flex items-start gap-4">
+                        <div class="w-11 h-11 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-cyber-accent shrink-0 mt-0.5">
+                            <i class="fa-solid fa-laptop-code text-xl"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="flex flex-wrap justify-between items-center gap-2">
+                                <h3 class="font-bold text-white text-base">Tecnólogo SENA</h3>
+                                <span class="text-xs font-mono bg-cyber-accent/20 text-cyber-accent px-2.5 py-0.5 rounded">2026</span>
+                            </div>
+                            <p class="text-sm text-cyber-cyan font-medium mt-0.5">Análisis y Desarrollo de Software (ADSO)</p>
+                            <p class="text-xs text-slate-400 mt-1">Arquitectura de software, bases de datos, lógica computacional y buenas prácticas de desarrollo seguro.</p>
+                        </div>
+                    </div>
+
+                    <!-- Universidad Central -->
+                    <div class="bg-slate-900/80 border border-slate-800 hover:border-cyber-cyan/50 transition rounded-xl p-4 flex items-start gap-4">
+                        <div class="w-11 h-11 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyber-cyan shrink-0 mt-0.5">
+                            <i class="fa-solid fa-earth-americas text-xl"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="flex flex-wrap justify-between items-center gap-2">
+                                <h3 class="font-bold text-white text-base">Universidad Central</h3>
+                                <span class="text-xs font-mono bg-slate-800 text-slate-300 px-2.5 py-0.5 rounded">2025 - 2026</span>
+                            </div>
+                            <p class="text-sm text-cyber-cyan font-medium mt-0.5">Programa de Inglés A2</p>
+                            <p class="text-xs text-slate-400 mt-1">Comprensión de documentación técnica internacional y comunicación en entornos TI.</p>
+                        </div>
+                    </div>
+
+                    <!-- Colegio Antares -->
+                    <div class="bg-slate-900/80 border border-slate-800 hover:border-purple-400/50 transition rounded-xl p-4 flex items-start gap-4">
+                        <div class="w-11 h-11 rounded-xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400 shrink-0 mt-0.5">
+                            <i class="fa-solid fa-user-graduate text-xl"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="flex flex-wrap justify-between items-center gap-2">
+                                <h3 class="font-bold text-white text-base">Colegio Antares</h3>
+                                <span class="text-xs font-mono bg-slate-800 text-slate-300 px-2.5 py-0.5 rounded">2020 - 2026</span>
+                            </div>
+                            <p class="text-sm text-purple-300 font-medium mt-0.5">Bachiller Académico</p>
+                            <p class="text-xs text-slate-400 mt-1">Educación media con participación destacada en el mantenimiento y soporte de los sistemas informáticos institucionales.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 5. VENTANA: TERMINAL INTERACTIVA -->
+        <section id="win-terminal" class="os-window window-minimized absolute top-20 left-10 md:left-72 w-[650px] h-[430px] bg-slate-950/95 rounded-xl flex flex-col overflow-hidden z-20">
+            <div class="win-header h-10 bg-slate-900 border-b border-slate-800 px-3 flex items-center justify-between cursor-move shrink-0">
+                <div class="flex items-center space-x-2 text-xs font-mono">
+                    <i class="fa-solid fa-terminal text-cyber-cyan"></i>
+                    <span class="font-semibold text-slate-200">bash — doal@sec-ops:~</span>
+                </div>
+                <div class="flex items-center space-x-1.5">
+                    <button onclick="minimizeWindow('win-terminal')" class="w-6 h-6 rounded hover:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white"><i class="fa-solid fa-minus text-[10px]"></i></button>
+                    <button onclick="closeWindow('win-terminal')" class="w-6 h-6 rounded hover:bg-rose-600 flex items-center justify-center text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-xs"></i></button>
+                </div>
+            </div>
+
+            <div class="p-4 font-mono text-xs md:text-sm flex-1 flex flex-col overflow-hidden" onclick="document.getElementById('term-input').focus()">
+                <!-- Botones rápidos para celular -->
+                <div class="flex flex-wrap gap-1.5 pb-3 mb-2 border-b border-slate-800/80 shrink-0">
+                    <span class="text-[11px] text-slate-400 mr-1 self-center">Comandos rápidos:</span>
+                    <button onclick="runCommand('help')" class="px-2 py-0.5 bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded text-[11px] text-cyber-cyan">help</button>
+                    <button onclick="runCommand('whoami')" class="px-2 py-0.5 bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded text-[11px] text-cyber-accent">whoami</button>
+                    <button onclick="runCommand('skills')" class="px-2 py-0.5 bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded text-[11px] text-emerald-400">skills</button>
+                    <button onclick="runCommand('experiencia')" class="px-2 py-0.5 bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded text-[11px] text-purple-400">experiencia</button>
+                    <button onclick="runCommand('scan')" class="px-2 py-0.5 bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded text-[11px] text-rose-400">scan</button>
+                    <button onclick="runCommand('clear')" class="px-2 py-0.5 bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded text-[11px] text-slate-400">clear</button>
+                </div>
+
+                <!-- Salida de la terminal -->
+                <div id="term-output" class="flex-1 overflow-y-auto space-y-2 text-slate-300 pr-1 select-text">
+                    <div class="text-cyber-accent font-bold">DoalSec OS Terminal [Versión 2.6.0-Defensive]</div>
+                    <div class="text-slate-400">Escribe <span class="text-cyber-cyan">'help'</span> o toca uno de los botones superiores para listar los comandos disponibles.</div>
+                </div>
+
+                <!-- Línea de entrada -->
+                <form onsubmit="handleTerminalSubmit(event)" class="mt-2 pt-2 border-t border-slate-900 flex items-center gap-2 shrink-0">
+                    <span class="text-emerald-400 font-bold shrink-0">doal@sec:~$</span>
+                    <input id="term-input" type="text" autocomplete="off" placeholder="Escribe un comando..." class="bg-transparent border-none outline-none text-white w-full font-mono text-xs md:text-sm">
+                </form>
+            </div>
+        </section>
+
+        <!-- 6. VENTANA: CONTACTO & ESCANÉAME QR -->
+        <section id="win-contact" class="os-window window-minimized absolute top-16 left-28 md:left-80 w-[520px] h-[460px] bg-cyber-panel rounded-xl flex flex-col overflow-hidden z-20">
+            <div class="win-header h-10 bg-slate-900/95 border-b border-slate-800 px-3 flex items-center justify-between cursor-move shrink-0">
+                <div class="flex items-center space-x-2 text-xs font-mono">
+                    <i class="fa-solid fa-qrcode text-cyber-accent"></i>
+                    <span class="font-semibold text-slate-200">canal_seguro_contacto.pgp</span>
+                </div>
+                <div class="flex items-center space-x-1.5">
+                    <button onclick="minimizeWindow('win-contact')" class="w-6 h-6 rounded hover:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white"><i class="fa-solid fa-minus text-[10px]"></i></button>
+                    <button onclick="closeWindow('win-contact')" class="w-6 h-6 rounded hover:bg-rose-600 flex items-center justify-center text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-xs"></i></button>
+                </div>
+            </div>
+
+            <div class="p-5 md:p-6 overflow-y-auto flex-1 space-y-5 select-text">
+                <div class="text-center">
+                    <h2 class="text-xl font-bold text-white">Conecta con Doal Sánchez</h2>
+                    <p class="text-xs text-slate-400 font-mono mt-1">Disponibilidad total para proyectos y cargos en Ciberseguridad & TI</p>
+                </div>
+
+                <!-- Tarjeta de Correo con Copiado Rápido -->
+                <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-lg bg-cyber-accent/20 border border-cyber-accent/40 flex items-center justify-center text-cyber-accent shrink-0">
+                            <i class="fa-solid fa-envelope text-lg"></i>
+                        </div>
+                        <div class="text-center sm:text-left">
+                            <div class="text-[11px] font-mono text-slate-400">CORREO ELECTRÓNICO DIRECTO</div>
+                            <div id="email-text" class="text-sm font-mono font-bold text-white">Higerman299@gmail.com</div>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="copyEmail()" class="px-3 py-1.5 bg-cyber-accent text-slate-950 font-semibold text-xs rounded-lg hover:bg-yellow-400 transition flex items-center gap-1.5">
+                            <i class="fa-regular fa-copy"></i> <span id="copy-label">Copiar</span>
+                        </button>
+                        <a href="mailto:Higerman299@gmail.com" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white text-xs rounded-lg border border-slate-700 transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-paper-plane"></i> Enviar
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Sección Escanéame inspirada en el CV -->
+                <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex flex-col items-center text-center">
+                    <span class="text-xs font-mono uppercase tracking-widest text-cyber-cyan mb-2">
+                        <i class="fa-solid fa-camera mr-1"></i> Escanéame // vCard Digital
+                    </span>
+                    <!-- Código QR estilizado SVG que apunta al mailto de Doal -->
+                    <div class="bg-white p-3 rounded-xl shadow-lg border-4 border-cyber-accent">
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=130x130&data=mailto:Higerman299@gmail.com" 
+                             alt="QR Contacto Doal Sánchez" 
+                             class="w-28 h-28 object-contain"
+                             onerror="this.src='https://placehold.co/130x130/ffffff/000000?text=QR+DOAL'">
+                    </div>
+                    <p class="text-xs text-slate-400 mt-3 max-w-xs">
+                        Escanea este código con tu celular para redactar un correo directo a <span class="text-white">Higerman299@gmail.com</span>.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ==================== MENÚ DE INICIO EMERGENTE ==================== -->
+    <div id="start-menu" class="fixed bottom-16 left-3 w-72 bg-slate-950/95 backdrop-blur-xl border border-slate-800 rounded-2xl p-4 shadow-2xl z-[100] hidden">
+        <div class="flex items-center space-x-3 pb-3 mb-3 border-b border-slate-800">
+            <div class="w-10 h-10 rounded-full bg-cyber-accent flex items-center justify-center text-slate-950 font-bold">
+                DS
+            </div>
+            <div>
+                <div class="text-sm font-bold text-white">Doal Sánchez</div>
+                <div class="text-[11px] font-mono text-cyber-cyan">Ciberseguridad Defensiva</div>
+            </div>
+        </div>
+        <div class="space-y-1 text-xs">
+            <button onclick="openWindow('win-profile'); toggleStartMenu();" class="w-full flex items-center space-x-3 p-2 rounded-lg hover:bg-slate-800/80 text-left transition">
+                <i class="fa-solid fa-id-badge text-cyber-accent w-5 text-center"></i>
+                <span>Sobre Mí & Perfil</span>
+            </button>
+            <button onclick="openWindow('win-experience'); toggleStartMenu();" class="w-full flex items-center space-x-3 p-2 rounded-lg hover:bg-slate-800/80 text-left transition">
+                <i class="fa-solid fa-briefcase text-cyber-cyan w-5 text-center"></i>
+                <span>Experiencia Laboral</span>
+            </button>
+            <button onclick="openWindow('win-skills'); toggleStartMenu();" class="w-full flex items-center space-x-3 p-2 rounded-lg hover:bg-slate-800/80 text-left transition">
+                <i class="fa-solid fa-microchip text-emerald-400 w-5 text-center"></i>
+                <span>Habilidades (Ghidra / IDA)</span>
+            </button>
+            <button onclick="openWindow('win-education'); toggleStartMenu();" class="w-full flex items-center space-x-3 p-2 rounded-lg hover:bg-slate-800/80 text-left transition">
+                <i class="fa-solid fa-graduation-cap text-purple-400 w-5 text-center"></i>
+                <span>Datos Académicos</span>
+            </button>
+            <button onclick="openWindow('win-terminal'); toggleStartMenu();" class="w-full flex items-center space-x-3 p-2 rounded-lg hover:bg-slate-800/80 text-left transition">
+                <i class="fa-solid fa-terminal text-cyan-400 w-5 text-center"></i>
+                <span>Terminal Interactiva</span>
+            </button>
+            <button onclick="openWindow('win-contact'); toggleStartMenu();" class="w-full flex items-center space-x-3 p-2 rounded-lg hover:bg-slate-800/80 text-left transition">
+                <i class="fa-solid fa-qrcode text-rose-400 w-5 text-center"></i>
+                <span>Contacto & Código QR</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- ==================== DOCK / BARRA DE TAREAS INFERIOR ==================== -->
+    <footer class="h-14 bg-slate-950/90 backdrop-blur-xl border-t border-slate-800/80 px-2 md:px-6 flex items-center justify-center z-50 shrink-0">
+        <div class="flex items-center space-x-1.5 sm:space-x-3 bg-slate-900/90 border border-slate-800 px-3 py-1.5 rounded-2xl shadow-lg">
+            
+            <button onclick="toggleStartMenu()" class="p-2 rounded-xl hover:bg-slate-800 text-cyber-accent transition" title="Menú del Sistema">
+                <i class="fa-solid fa-shield-halved text-lg"></i>
+            </button>
+
+            <div class="h-6 w-[1px] bg-slate-800"></div>
+
+            <button onclick="openWindow('win-profile')" id="dock-win-profile" class="dock-btn relative p-2 rounded-xl hover:bg-slate-800 text-amber-400 transition" title="Sobre Mí">
+                <i class="fa-solid fa-id-badge text-lg"></i>
+                <span class="dock-dot absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-cyber-accent"></span>
+            </button>
+
+            <button onclick="openWindow('win-experience')" id="dock-win-experience" class="dock-btn relative p-2 rounded-xl hover:bg-slate-800 text-cyber-cyan transition" title="Experiencia Laboral">
+                <i class="fa-solid fa-briefcase text-lg"></i>
+                <span class="dock-dot hidden absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-cyber-accent"></span>
+            </button>
+
+            <button onclick="openWindow('win-skills')" id="dock-win-skills" class="dock-btn relative p-2 rounded-xl hover:bg-slate-800 text-emerald-400 transition" title="Habilidades">
+                <i class="fa-solid fa-microchip text-lg"></i>
+                <span class="dock-dot hidden absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-cyber-accent"></span>
+            </button>
+
+            <button onclick="openWindow('win-education')" id="dock-win-education" class="dock-btn relative p-2 rounded-xl hover:bg-slate-800 text-purple-400 transition" title="Datos Académicos">
+                <i class="fa-solid fa-graduation-cap text-lg"></i>
+                <span class="dock-dot hidden absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-cyber-accent"></span>
+            </button>
+
+            <button onclick="openWindow('win-terminal')" id="dock-win-terminal" class="dock-btn relative p-2 rounded-xl hover:bg-slate-800 text-cyan-300 transition" title="Terminal">
+                <i class="fa-solid fa-terminal text-lg"></i>
+                <span class="dock-dot hidden absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-cyber-accent"></span>
+            </button>
+
+            <button onclick="openWindow('win-contact')" id="dock-win-contact" class="dock-btn relative p-2 rounded-xl hover:bg-slate-800 text-rose-400 transition" title="Contacto">
+                <i class="fa-solid fa-qrcode text-lg"></i>
+                <span class="dock-dot hidden absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-cyber-accent"></span>
+            </button>
+
+        </div>
+    </footer>
+
+    <!-- ==================== LÓGICA JAVASCRIPT DEL SISTEMA OPERATIVO ==================== -->
+    <script>
+        /* --- 1. SECUENCIA DE ARRANQUE (BOOT SEQUENCE) --- */
+        const bootMessages = [
+            "[OK] Cargando Kernel DoalSec v2.6-defensive...",
+            "[OK] Montando módulos de protección de sistemas y datos...",
+            "[OK] Verificando herramientas de Ingeniería Inversa: Ghidra & IDA PRO...",
+            "[OK] Cargando historial operativo: Amsecar S.A.S | Disflenal S.A.S | Colegio Antares...",
+            "[OK] Inicializando interfaz gráfica adaptable (PC / Mobile Ready)...",
+            "[READY] Acceso concedido. Bienvenido al portafolio de Doal Sánchez."
+        ];
+
+        let bootIndex = 0;
+        const bootLogsEl = document.getElementById('boot-logs');
+        const bootProgressEl = document.getElementById('boot-progress');
+        const bootScreenEl = document.getElementById('boot-screen');
+
+        function runBootSequence() {
+            if (bootIndex < bootMessages.length) {
+                const line = document.createElement('div');
+                line.innerHTML = `<span class="text-emerald-400 mr-2">➜</span>${bootMessages[bootIndex]}`;
+                bootLogsEl.appendChild(line);
+                bootIndex++;
+                bootProgressEl.style.width = `${(bootIndex / bootMessages.length) * 100}%`;
+                setTimeout(runBootSequence, 260);
+            } else {
+                setTimeout(skipBoot, 350);
+            }
+        }
+
+        function skipBoot() {
+            bootScreenEl.style.opacity = '0';
+            setTimeout(() => {
+                bootScreenEl.style.display = 'none';
+            }, 450);
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') skipBoot();
+        });
+
+        /* --- 2. RELOJ EN TIEMPO REAL --- */
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('os-clock').textContent = now.toTimeString().split(' ')[0];
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        /* --- 3. GESTIÓN DE VENTANAS (ABRIR, MINIMIZAR, CERRAR, FOCO, ARRASTRAR) --- */
+        let highestZ = 40;
+
+        function focusWindow(winId) {
+            highestZ++;
+            document.querySelectorAll('.os-window').forEach(w => {
+                w.classList.remove('active-window');
+            });
+            const target = document.getElementById(winId);
+            if (target) {
+                target.style.zIndex = highestZ;
+                target.classList.add('active-window');
+            }
+        }
+
+        function openWindow(winId) {
+            // En pantallas móviles, cerramos las otras ventanas para mantener orden visual
+            if (window.innerWidth < 768) {
+                document.querySelectorAll('.os-window').forEach(w => {
+                    if (w.id !== winId) w.classList.add('window-minimized');
+                });
+            }
+
+            const win = document.getElementById(winId);
+            if (!win) return;
+            win.classList.remove('window-minimized');
+            focusWindow(winId);
+            updateDockIndicator(winId, true);
+
+            if (winId === 'win-terminal') {
+                setTimeout(() => document.getElementById('term-input').focus(), 150);
+            }
+        }
+
+        function minimizeWindow(winId) {
+            const win = document.getElementById(winId);
+            if (win) win.classList.add('window-minimized');
+        }
+
+        function closeWindow(winId) {
+            const win = document.getElementById(winId);
+            if (win) {
+                win.classList.add('window-minimized');
+                updateDockIndicator(winId, false);
+            }
+        }
+
+        function updateDockIndicator(winId, isOpen) {
+            const dockBtn = document.getElementById(`dock-${winId}`);
+            if (!dockBtn) return;
+            const dot = dockBtn.querySelector('.dock-dot');
+            if (dot) {
+                dot.classList.toggle('hidden', !isOpen);
+            }
+        }
+
+        function toggleStartMenu() {
+            const menu = document.getElementById('start-menu');
+            menu.classList.toggle('hidden');
+        }
+
+        // Hacer que las ventanas sean arrastrables en PC
+        document.querySelectorAll('.os-window').forEach(win => {
+            win.addEventListener('mousedown', () => focusWindow(win.id));
+            win.addEventListener('touchstart', () => focusWindow(win.id), { passive: true });
+
+            const header = win.querySelector('.win-header');
+            let isDragging = false;
+            let offsetX = 0, offsetY = 0;
+
+            header.addEventListener('mousedown', (e) => {
+                if (window.innerWidth < 768) return; // No arrastrar en móvil
+                isDragging = true;
+                focusWindow(win.id);
+                const rect = win.getBoundingClientRect();
+                offsetX = e.clientX - rect.left;
+                offsetY = e.clientY - rect.top;
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                const maxX = window.innerWidth - 120;
+                const maxY = window.innerHeight - 100;
+                const newLeft = Math.max(0, Math.min(e.clientX - offsetX, maxX));
+                const newTop = Math.max(36, Math.min(e.clientY - offsetY, maxY));
+                win.style.left = `${newLeft}px`;
+                win.style.top = `${newTop}px`;
+            });
+
+            window.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+        });
+
+        /* --- 4. SIMULADOR DE AUDITORÍA EN VENTANA HABILIDADES --- */
+        function analyzeBinary() {
+            const res = document.getElementById('asm-result');
+            res.classList.remove('hidden');
+            res.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1"></i> Ejecutando decompilador Ghidra / IDA Pro...`;
+            setTimeout(() => {
+                res.innerHTML = `[✓] Auditoría completada por Doal Sánchez: Rutina verificada sin vulnerabilidades de desbordamiento.`;
+            }, 700);
+        }
+
+        /* --- 5. TERMINAL INTERACTIVA --- */
+        const termOutput = document.getElementById('term-output');
+        const termInput = document.getElementById('term-input');
+
+        function handleTerminalSubmit(e) {
+            e.preventDefault();
+            const cmd = termInput.value.trim();
+            if (!cmd) return;
+            runCommand(cmd);
+            termInput.value = '';
+        }
+
+        function runCommand(rawCmd) {
+            const cmd = rawCmd.toLowerCase();
+            const cmdLine = document.createElement('div');
+            cmdLine.innerHTML = `<span class="text-emerald-400 font-bold">doal@sec:~$</span> <span class="text-white">${rawCmd}</span>`;
+            termOutput.appendChild(cmdLine);
+
+            const response = document.createElement('div');
+            response.className = "pl-3 border-l-2 border-slate-700 text-slate-300 my-1 space-y-1";
+
+            switch (cmd) {
+                case 'help':
+                    response.innerHTML = `
+                        <div class="text-cyber-accent font-bold">Comandos disponibles en DoalSec OS:</div>
+                        <div><span class="text-cyber-cyan">whoami</span>      — Muestra el resumen profesional de Doal Sánchez</div>
+                        <div><span class="text-cyber-cyan">skills</span>      — Lista las habilidades técnicas y de reversing</div>
+                        <div><span class="text-cyber-cyan">experiencia</span> — Muestra la trayectoria laboral verificada</div>
+                        <div><span class="text-cyber-cyan">educacion</span>   — Muestra los datos académicos</div>
+                        <div><span class="text-cyber-cyan">contacto</span>    — Muestra el correo y disponibilidad</div>
+                        <div><span class="text-cyber-cyan">scan</span>        — Ejecuta un escaneo preventivo de vulnerabilidades</div>
+                        <div><span class="text-cyber-cyan">clear</span>       — Limpia la pantalla de la terminal</div>
+                    `;
+                    break;
+                case 'whoami':
+                    response.innerHTML = `
+                        <div><strong class="text-white">Doal Sánchez</strong> | Especialista en Ciberseguridad Defensiva</div>
+                        <div>Apasionado por la tecnología, la programación y la protección de sistemas y datos. Aprendizaje autónomo, resolución de problemas y disponibilidad total.</div>
+                    `;
+                    break;
+                case 'skills':
+                    response.innerHTML = `
+                        <div class="text-emerald-400">[+] Habilidades cargadas:</div>
+                        <div>• Ingeniería Inversa: <strong class="text-white">Ghidra, IDA PRO</strong></div>
+                        <div>• Desarrollo & Datos: <strong class="text-white">Lógica de Programación, Excel</strong></div>
+                        <div>• Liderazgo & Gestión: <strong class="text-white">Gestión de grandes equipos, Resolución de problemas</strong></div>
+                    `;
+                    break;
+                case 'experiencia':
+                    response.innerHTML = `
+                        <div><span class="text-cyber-accent">[2025 - Actual]</span> <strong>Amsecar, S.A.S</strong> — Mantenimiento de sistemas informáticos (Detección preventiva de vulnerabilidades y auditoría).</div>
+                        <div><span class="text-cyber-cyan">[2023 - 2025]</span> <strong>Disflenal S.A.S</strong> — Analista de Infraestructura y Soporte Técnico (Backups, optimización e incidencias).</div>
+                        <div><span class="text-slate-400">[2023 - 2024]</span> <strong>Colegio Antares</strong> — Mantenimiento de sistemas informáticos (Soporte a docentes y administrativos).</div>
+                    `;
+                    break;
+                case 'educacion':
+                    response.innerHTML = `
+                        <div>• <strong>Tecnólogo SENA:</strong> Análisis y Desarrollo de Software (2026)</div>
+                        <div>• <strong>Universidad Central:</strong> Inglés A2 (2025 - 2026)</div>
+                        <div>• <strong>Colegio Antares:</strong> Bachiller (2020 - 2026)</div>
+                    `;
+                    break;
+                case 'contacto':
+                    response.innerHTML = `
+                        <div>📧 Email: <span class="text-cyber-accent">Higerman299@gmail.com</span></div>
+                        <div>🟢 Estado: Estudiante de educación media con <strong>Disponibilidad Total</strong>.</div>
+                    `;
+                    break;
+                case 'scan':
+                    response.innerHTML = `
+                        <div class="text-cyber-cyan">[i] Iniciando auditoría preventiva en los nodos locales...</div>
+                        <div class="text-emerald-400">[✓] Firewall Perimetral: ACTIVO</div>
+                        <div class="text-emerald-400">[✓] Copias de Seguridad (Backups): VERIFICADAS</div>
+                        <div class="text-emerald-400">[✓] 0 vulnerabilidades críticas detectadas. Continuidad operativa al 100%.</div>
+                    `;
+                    break;
+                case 'clear':
+                    termOutput.innerHTML = '';
+                    return;
+                default:
+                    response.innerHTML = `<span class="text-rose-400">Comando no reconocido: '${rawCmd}'. Escribe <span class="underline">help</span> para ver la lista de comandos.</span>`;
+            }
+
+            termOutput.appendChild(response);
+            termOutput.scrollTop = termOutput.scrollHeight;
+        }
+
+        /* --- 6. COPIAR CORREO AL PORTAPAPELES --- */
+        function copyEmail() {
+            const email = "Higerman299@gmail.com";
+            const tempInput = document.createElement("input");
+            tempInput.value = email;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand("copy");
+            document.body.removeChild(tempInput);
+
+            const label = document.getElementById('copy-label');
+            label.textContent = "¡Copiado!";
+            setTimeout(() => {
+                label.textContent = "Copiar";
+            }, 2000);
+        }
+
+        // Iniciar secuencia de arranque al cargar la ventana
+        window.onload = () => {
+            runBootSequence();
+            focusWindow('win-profile');
+        };
+    </script>
+</body>
+</html>
